@@ -1,8 +1,8 @@
-name: Sync to Notion
+﻿name: Sync to Notion
 
 on:
   push:
-    branches: [main]
+    branches: [v5]
     paths:
       - 'content/**.md'
 
