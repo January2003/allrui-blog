@@ -1,0 +1,39 @@
+@use "./variables.scss" as *;
+
+// 全局字体调大（中文友好）
+.page {
+  font-size: 16px;
+}
+
+// 探索/侧边栏字体
+.sidebar {
+  font-size: 15px;
+}
+
+// 文章标题
+.article-title h1 {
+  font-size: 1.8rem !important;
+}
+
+// 目录项字体
+.explorer {
+  font-size: 15px;
+}
+
+// 搜索框
+.search {
+  font-size: 15px;
+}
+
+// 正文内容
+.content {
+  p, li {
+    font-size: 16px;
+    line-height: 1.8;
+  }
+}
+
+// 反向链接区域
+.backlinks {
+  font-size: 15px;
+}
