@@ -59,7 +59,7 @@ async function poll() {
       filter: {
         and: [
           { timestamp: 'last_edited_time', last_edited_time: { after: lastSync } },
-          { property: 'Status', select: { does_not_equal: 'Archived' } }
+          { property: 'Status', select: { does_not_equal: 'Invisible' } }
         ]
       },
       sorts: [{ timestamp: 'last_edited_time', direction: 'ascending' }]

@@ -46,9 +46,10 @@ async function syncFile(filePath) {
     if (mapping[filePath]) {
       await notion.pages.update({
         page_id: mapping[filePath],
-        properties: { Status: { select: { name: 'Archived' } } }
+        properties: { Status: { select: { name: 'Invisible' } } }
       });
-      console.log(`🗑️ 归档: ${filePath}`);
+      delete mapping[filePath];
+      console.log(`👻 设为 Invisible: ${filePath}`);
     }
     return;
   }
