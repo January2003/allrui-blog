@@ -1,0 +1,15 @@
+[Unit]
+Description=Notion Observer - Sync Notion to GitHub
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/notion-observer
+ExecStart=/usr/bin/node sync-from-notion-vps.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

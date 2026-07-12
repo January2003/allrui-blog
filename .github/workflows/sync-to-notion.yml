@@ -1,0 +1,45 @@
+name: Sync to Notion
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'content/**.md'
+
+jobs:
+  sync:
+    if: "!contains(github.event.head_commit.message, '[skip notion]')"
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sync-to-notion
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/cache@v4
+        with:
+          path: ./sync/node_modules
+          key: ${{ runner.os }}-sync-${{ hashFiles('sync/package.json') }}
+
+      - run: |
+          cd sync
+          npm install
+
+      - run: node sync/to-notion.js
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+
+      - name: Commit mapping update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sync/notion-mapping.json
+          git diff --cached --quiet || git commit -m "chore: update notion mapping"
+          git push
