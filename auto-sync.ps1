@@ -1,6 +1,4 @@
-param(
-    [switch]$NoProxy
-)
+param([switch]$NoProxy)
 
 $projDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $projDir
@@ -18,45 +16,37 @@ if (-not $NoProxy) {
 }
 
 # 第一次先同步一次
-git add .
+git add -A
 git commit -m "auto: 启动监听 $(Get-Date -Format 'HH:mm:ss')" --allow-empty
 git push
 
-$watcher = New-Object FileSystemWatcher
+# 监听文件变化
+$watcher = New-Object System.IO.FileSystemWatcher
 $watcher.Path = "$projDir\content"
 $watcher.Filter = "*.md"
 $watcher.IncludeSubdirectories = $true
 $watcher.EnableRaisingEvents = $true
 
-$timer = $null
 $syncLock = $false
 
-$action = {
+# 防抖延时提交
+Register-ObjectEvent $watcher Changed -Action {
     if ($syncLock) { return }
     $syncLock = $true
-    
-    if ($timer) { $timer.Dispose() }
-    $timer = [System.Timers.Timer]::new(1500)
-    $timer.AutoReset = $false
-    Register-ObjectEvent $timer Elapsed -Action {
-        Set-Location $projDir
-        $now = Get-Date -Format 'HH:mm:ss'
-        git add .
-        $status = git status --short
-        if ($status) {
-            git commit -m "auto: $now"
-            git push
-            Write-Host "  [$(Get-Date -Format 'HH:mm:ss')] ✅ 已同步 $($status.Count) 个文件" -ForegroundColor Green
-        }
-        $global:syncLock = $false
-    } | Out-Null
-    $timer.Start()
-}
+    Start-Sleep -Seconds 2
+    $now = Get-Date -Format 'HH:mm:ss'
+    Set-Location $projDir
+    git add -A
+    $status = git status --short
+    if ($status) {
+        git commit -m "auto: $now"
+        git push
+        Write-Host "  [$now] ✅ 已同步 $($status.Count) 个文件" -ForegroundColor Green
+    }
+    $syncLock = $false
+}.GetNewClosure()
 
-Register-ObjectEvent $watcher Changed -Action $action | Out-Null
-Register-ObjectEvent $watcher Created -Action $action | Out-Null
-
-# 保持运行
+Write-Host "  监听中..." -ForegroundColor Yellow
 while ($true) {
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 10
 }
