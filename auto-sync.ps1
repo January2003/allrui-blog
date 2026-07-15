@@ -4,44 +4,49 @@ $projDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $projDir
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  Obsidian ⇄ GitHub 双向秒同步 (轮询版)" -ForegroundColor Cyan
-Write-Host "  目录: $projDir\content" -ForegroundColor Cyan
+Write-Host "  Obsidian ⇄ GitHub 双向秒同步" -ForegroundColor Cyan
+Write-Host "  监控: $projDir\content\*.md" -ForegroundColor Cyan
 Write-Host "  Ctrl+C 停止" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 
-# 设置代理
+# 代理
 if (-not $NoProxy) {
     git config http.proxy http://127.0.0.1:7897
     git config https.proxy http://127.0.0.1:7897
 }
 
-$lastHash = ""
+# 记录本地与远程的最新 commit hash
+$lastLocalCommit = git rev-parse HEAD
+$lastRemoteCommit = git rev-parse origin/v5
 
 while ($true) {
-    # ① 先拉取远程变更（GitHub → Obsidian）
-    $pullResult = git pull --rebase 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        if ($pullResult -match "Updating") {
-            Write-Host "  [$(Get-Date -Format 'HH:mm:ss')] 🔽 已拉取远程更新" -ForegroundColor Magenta
-        }
-    } else {
-        # 如果有冲突，放弃 rebase 用 merge
-        git pull --no-rebase 2>&1 | Out-Null
-    }
+    $now = Get-Date -Format 'HH:mm:ss'
 
-    # ② 推送本地变更（Obsidian → GitHub）
-    $hash = git hash-object "content/hello.md"
-    if ($hash -ne $lastHash -and $lastHash -ne "") {
-        $now = Get-Date -Format 'HH:mm:ss'
-        git add -A
-        $status = git status --short
-        if ($status) {
-            git commit -m "auto: $now"
-            git push
-            Write-Host "  [$now] ✅ 已同步 $($status.Count) 个文件 ↑ GitHub" -ForegroundColor Green
+    # ⬇️ ① 检查远程是否有新变更（GitHub → Obsidian）
+    git fetch origin v5 2>&1 | Out-Null
+    $remoteCommit = git rev-parse origin/v5
+    if ($remoteCommit -ne $lastRemoteCommit) {
+        Write-Host "  [$now] 🔽 检测到远程更新，拉取中..." -ForegroundColor Magenta
+        git pull --rebase 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            git pull --no-rebase 2>&1 | Out-Null
         }
+        $lastLocalCommit = git rev-parse HEAD
+        $lastRemoteCommit = git rev-parse origin/v5
+        Write-Host "  [$now] ✅ 已同步远程更新 ↓ Obsidian" -ForegroundColor Magenta
     }
-    $lastHash = $hash
+    $lastRemoteCommit = $remoteCommit
+
+    # ⬆️ ② 检查本地是否有未提交变更（Obsidian → GitHub）
+    $status = git status --short
+    if ($status) {
+        git add -A
+        git commit -m "auto: $now"
+        git push
+        Write-Host "  [$now] ✅ 已同步 $($status.Count) 个文件 ↑ GitHub" -ForegroundColor Green
+        $lastLocalCommit = git rev-parse HEAD
+        $lastRemoteCommit = git rev-parse origin/v5
+    }
 
     Start-Sleep -Milliseconds 3000
 }
